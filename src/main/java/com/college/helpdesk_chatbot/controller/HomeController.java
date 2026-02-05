@@ -2,6 +2,7 @@ package com.college.helpdesk_chatbot.controller;
 
 import com.college.helpdesk_chatbot.model.FAQ;
 import com.college.helpdesk_chatbot.repository.FAQRepository;
+import com.college.helpdesk_chatbot.service.AIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -18,6 +19,9 @@ public class HomeController {
     @Autowired
     private FAQRepository faqRepository;
 
+    @Autowired
+    private AIService aiService;
+
     @GetMapping("/")
     public String home(Model model) {
         List<FAQ> faqs = faqRepository.findAll();
@@ -33,79 +37,79 @@ public class HomeController {
     @PostMapping("/chat")
     @ResponseBody
     public String handleChat(@RequestParam String question) {
-        // Simple keyword-based search for now
-        String answer = findAnswer(question);
-        return answer;
-    }
+        // First, try to find answer in FAQ database
+        String faqAnswer = findAnswerInFAQ(question);
 
-    private String findAnswer(String question) {
-        String lowerQuestion = question.toLowerCase();
-
-        // Search through all FAQs
-        List<FAQ> allFAQs = faqRepository.findAll();
-
-        for (FAQ faq : allFAQs) {
-            String faqQuestion = faq.getQuestion().toLowerCase();
-
-            // Check if FAQ question contains similar keywords
-            if (containsSimilarKeywords(lowerQuestion, faqQuestion)) {
-                return faq.getAnswer();
-            }
+        if (faqAnswer != null) {
+            return "📚 From FAQ Database:\n\n" + faqAnswer;
         }
 
-        // If no match found, try keyword search in questions
+        // If not found in FAQ, use AI
+        String aiAnswer = aiService.getAIResponse(question);
+        return "🤖 AI Response:\n\n" + aiAnswer;
+    }
+
+    private String findAnswerInFAQ(String question) {
+        String lowerQuestion = question.toLowerCase();
+        List<FAQ> allFAQs = faqRepository.findAll();
+
+        // Check for keyword matches
         for (FAQ faq : allFAQs) {
             String faqQuestion = faq.getQuestion().toLowerCase();
-            String faqAnswer = faq.getAnswer().toLowerCase();
 
-            // Check for key terms
-            if (lowerQuestion.contains("fee") && faqQuestion.contains("fee")) {
+            // Fee related
+            if ((lowerQuestion.contains("fee") || lowerQuestion.contains("tuition") ||
+                    lowerQuestion.contains("cost")) && faqQuestion.contains("fee")) {
                 return faq.getAnswer();
             }
-            if (lowerQuestion.contains("exam") && faqQuestion.contains("exam")) {
+
+            // Exam related
+            if ((lowerQuestion.contains("exam") || lowerQuestion.contains("test") ||
+                    lowerQuestion.contains("final")) && faqQuestion.contains("exam")) {
                 return faq.getAnswer();
             }
+
+            // Scholarship related
             if (lowerQuestion.contains("scholarship") && faqQuestion.contains("scholarship")) {
                 return faq.getAnswer();
             }
-            if (lowerQuestion.contains("course") && faqQuestion.contains("course")) {
+
+            // Course related
+            if ((lowerQuestion.contains("course") || lowerQuestion.contains("class") ||
+                    lowerQuestion.contains("subject")) && faqQuestion.contains("course")) {
                 return faq.getAnswer();
             }
-            if (lowerQuestion.contains("admission") && faqQuestion.contains("admission")) {
+
+            // Admission related
+            if ((lowerQuestion.contains("admission") || lowerQuestion.contains("apply") ||
+                    lowerQuestion.contains("application")) && faqQuestion.contains("admission")) {
                 return faq.getAnswer();
             }
-            if (lowerQuestion.contains("deadline") && faqQuestion.contains("deadline")) {
+
+            // Grade/passing related
+            if ((lowerQuestion.contains("grade") || lowerQuestion.contains("pass") ||
+                    lowerQuestion.contains("gpa")) && faqQuestion.contains("grade")) {
                 return faq.getAnswer();
             }
-            if (lowerQuestion.contains("schedule") && faqQuestion.contains("schedule")) {
+
+            // Schedule/timetable related
+            if ((lowerQuestion.contains("schedule") || lowerQuestion.contains("timetable") ||
+                    lowerQuestion.contains("library")) &&
+                    (faqQuestion.contains("schedule") || faqQuestion.contains("library"))) {
                 return faq.getAnswer();
             }
-            if (lowerQuestion.contains("library") && faqQuestion.contains("library")) {
-                return faq.getAnswer();
-            }
-            if (lowerQuestion.contains("grade") || lowerQuestion.contains("passing")) {
-                if (faqQuestion.contains("grade") || faqQuestion.contains("passing")) {
-                    return faq.getAnswer();
-                }
-            }
+
+            // Major related
             if (lowerQuestion.contains("major") && faqQuestion.contains("major")) {
                 return faq.getAnswer();
             }
-        }
 
-        return "I'm sorry, I don't have information about that. Please try asking about fees, exams, courses, admissions, or schedules. You can also contact the admin office for more specific queries.";
-    }
-
-    private boolean containsSimilarKeywords(String question, String faqQuestion) {
-        String[] questionWords = question.split("\\s+");
-        int matchCount = 0;
-
-        for (String word : questionWords) {
-            if (word.length() > 3 && faqQuestion.contains(word)) {
-                matchCount++;
+            // Deadline related
+            if (lowerQuestion.contains("deadline") && faqQuestion.contains("deadline")) {
+                return faq.getAnswer();
             }
         }
 
-        return matchCount >= 2;
+        return null; // Not found in FAQ
     }
 }
